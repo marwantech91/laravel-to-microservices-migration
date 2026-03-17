@@ -1,0 +1,175 @@
+version: '3.8'
+
+# Full microservices stack (after migration)
+
+services:
+  # === Infrastructure ===
+
+  rabbitmq:
+    image: rabbitmq:3.12-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  # === Databases (one per service) ===
+
+  mongo-auth:
+    image: mongo:7
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongo_auth_data:/data/db
+
+  mongo-products:
+    image: mongo:7
+    ports:
+      - "27019:27017"
+    volumes:
+      - mongo_products_data:/data/db
+
+  mongo-orders:
+    image: mongo:7
+    ports:
+      - "27020:27017"
+    volumes:
+      - mongo_orders_data:/data/db
+
+  mongo-notifications:
+    image: mongo:7
+    ports:
+      - "27021:27017"
+    volumes:
+      - mongo_notifications_data:/data/db
+
+  # === API Gateway ===
+
+  gateway:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - GATEWAY_PORT=3000
+      - JWT_PUBLIC_KEY=${JWT_PUBLIC_KEY}
+      - AUTH_SERVICE_URL=http://auth-service:3001
+      - PRODUCT_SERVICE_URL=http://product-service:3002
+      - ORDER_SERVICE_URL=http://order-service:3003
+      - NOTIFICATION_SERVICE_URL=http://notification-service:3004
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - auth-service
+      - product-service
+      - order-service
+      - notification-service
+
+  # === Microservices ===
+
+  auth-service:
+    build:
+      context: ./services/auth-service
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - MONGO_URI=mongodb://mongo-auth:27017/auth_service
+      - RABBITMQ_URL=amqp://admin:admin@rabbitmq:5672
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRES_IN=1h
+    depends_on:
+      mongo-auth:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+
+  product-service:
+    build:
+      context: ./services/product-service
+      dockerfile: Dockerfile
+    ports:
+      - "3002:3002"
+    environment:
+      - PORT=3002
+      - MONGO_URI=mongodb://mongo-products:27017/product_service
+      - RABBITMQ_URL=amqp://admin:admin@rabbitmq:5672
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      mongo-products:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+
+  order-service:
+    build:
+      context: ./services/order-service
+      dockerfile: Dockerfile
+    ports:
+      - "3003:3003"
+    environment:
+      - PORT=3003
+      - MONGO_URI=mongodb://mongo-orders:27017/order_service
+      - RABBITMQ_URL=amqp://admin:admin@rabbitmq:5672
+      - PRODUCT_SERVICE_URL=http://product-service:3002
+      - PAYMENT_SERVICE_URL=http://payment-service:3005
+    depends_on:
+      mongo-orders:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+
+  notification-service:
+    build:
+      context: ./services/notification-service
+      dockerfile: Dockerfile
+    ports:
+      - "3004:3004"
+    environment:
+      - PORT=3004
+      - MONGO_URI=mongodb://mongo-notifications:27017/notification_service
+      - RABBITMQ_URL=amqp://admin:admin@rabbitmq:5672
+      - AUTH_SERVICE_URL=http://auth-service:3001
+    depends_on:
+      mongo-notifications:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+
+  payment-service:
+    build:
+      context: ./services/payment-service
+      dockerfile: Dockerfile
+    ports:
+      - "3005:3005"
+    environment:
+      - PORT=3005
+      - RABBITMQ_URL=amqp://admin:admin@rabbitmq:5672
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+volumes:
+  rabbitmq_data:
+  redis_data:
+  mongo_auth_data:
+  mongo_products_data:
+  mongo_orders_data:
+  mongo_notifications_data:

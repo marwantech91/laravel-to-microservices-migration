@@ -1,0 +1,17 @@
+{
+  "name": "@monolith-migration/scripts",
+  "version": "1.0.0",
+  "description": "Data migration scripts from monolith MongoDB to per-service databases",
+  "scripts": {
+    "migrate:users": "ts-node migrate-users.ts",
+    "migrate:products": "ts-node migrate-products.ts",
+    "migrate:orders": "ts-node migrate-orders.ts",
+    "migrate:all": "npm run migrate:users && npm run migrate:products && npm run migrate:orders",
+    "verify": "ts-node verify-migration.ts"
+  },
+  "dependencies": {
+    "mongodb": "^6.3.0",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.3.0"
+  }
+}
