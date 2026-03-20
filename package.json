@@ -1,0 +1,16 @@
+{
+  "name": "@monolith-migration/tests",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "jest --config jest.config.js"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0",
+    "ts-jest": "^29.1.0",
+    "jest": "^29.7.0",
+    "@types/jest": "^29.5.0",
+    "@types/express": "^4.17.0",
+    "@types/jsonwebtoken": "^9.0.0"
+  }
+}
