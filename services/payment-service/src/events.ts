@@ -14,10 +14,17 @@ async function getChannel(): Promise<amqp.Channel> {
   return channel;
 }
 
+export interface DomainEvent {
+  id: string;
+  timestamp: string;
+  source: string;
+  event: { type: string; data: unknown };
+}
+
 export async function publishEvent(type: string, data: unknown): Promise<void> {
   try {
     const ch = await getChannel();
-    const envelope = {
+    const envelope: DomainEvent = {
       id: uuid(),
       timestamp: new Date().toISOString(),
       source: 'payment-service',
