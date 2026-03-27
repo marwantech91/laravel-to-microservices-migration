@@ -51,6 +51,13 @@ class NotificationService
             ->toArray();
     }
 
+    public function getUnreadCount(string $userId): int
+    {
+        return Notification::where('user_id', $userId)
+            ->unread()
+            ->count();
+    }
+
     public function markAsRead(string $notificationId): void
     {
         $notification = Notification::find($notificationId);
