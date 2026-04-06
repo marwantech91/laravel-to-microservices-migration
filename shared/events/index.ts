@@ -162,3 +162,29 @@ export interface EventEnvelope<T extends DomainEvent = DomainEvent> {
   event: T;
   metadata?: Record<string, unknown>;
 }
+
+// === Dead Letter Queue ===
+
+export interface DeadLetterEntry {
+  envelope: EventEnvelope;
+  error: string;
+  failedAt: string;
+  retryCount: number;
+  lastRetryAt?: string;
+}
+
+/** Extract the aggregate ID from a domain event */
+export function getAggregateId(event: DomainEvent): string {
+  const data = event.data as Record<string, unknown>;
+  return (data.orderId || data.userId || data.productId || data.paymentId || '') as string;
+}
+
+/** Get the aggregate type from an event type string */
+export function getAggregateType(event: DomainEvent): string {
+  return event.type.split('.')[0];
+}
+
+/** Type guard to check if an event belongs to a specific aggregate */
+export function isEventOfAggregate(event: DomainEvent, aggregate: string): boolean {
+  return event.type.startsWith(`${aggregate}.`);
+}
